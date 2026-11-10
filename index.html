@@ -90,10 +90,10 @@
     .hero-visual::before { position: absolute; z-index: -2; top: 50%; left: 50%; width: min(510px, 90%); aspect-ratio: 1; transform: translate(-45%,-48%); border: 1px solid rgba(189,152,90,.24); border-radius: 50%; content: ""; }
     .hero-visual::after { position: absolute; z-index: -2; top: 50%; left: 50%; width: min(400px, 73%); aspect-ratio: 1; transform: translate(-45%,-48%); border: 1px solid rgba(189,152,90,.18); border-radius: 50%; content: ""; }
     .hero-glow { position: absolute; z-index: -1; top: 48%; left: 54%; width: 360px; height: 280px; transform: translate(-50%,-50%); border-radius: 50%; background: rgba(189,152,90,.13); filter: blur(62px); }
-    .hero-bracelet { width: min(440px, 100%); height: 410px; object-fit: cover; transform: rotate(-5deg) translate(2%, 1%); filter: drop-shadow(0 30px 26px rgba(34,30,22,.20)); animation: float-photo 6s ease-in-out infinite; }
-    .hero-label { position: absolute; right: 2%; bottom: 18%; display: flex; align-items: center; gap: 9px; color: #67645d; font-size: 9px; letter-spacing: .16em; text-transform: uppercase; }
+    .hero-bracelet { position: relative; z-index: 2; width: min(440px, 100%); height: 410px; object-fit: cover; transform: rotate(-5deg) translate(2%, 1%); filter: drop-shadow(0 30px 26px rgba(34,30,22,.20)); animation: float-photo 6s ease-in-out infinite; }
+    .hero-label { position: absolute; z-index: 4; right: 2%; bottom: 18%; display: flex; align-items: center; gap: 9px; color: #67645d; font-size: 9px; letter-spacing: .16em; text-transform: uppercase; }
     .hero-label::before { width: 30px; height: 1px; background: var(--gold); content: ""; }
-    .float-tag { position: absolute; top: 20%; right: 7%; display: flex; align-items: center; gap: 9px; padding: 12px 15px; background: rgba(255,254,250,.85); box-shadow: 0 8px 28px #201d1514; font-size: 10px; }
+    .float-tag { position: absolute; z-index: 4; top: 20%; right: 7%; display: flex; align-items: center; gap: 9px; padding: 12px 15px; background: rgba(255,254,250,.85); box-shadow: 0 8px 28px #201d1514; font-size: 10px; }
     .float-tag strong { display: block; font-size: 11px; }
     .float-tag span { color: var(--muted); font-size: 9px; }
     .float-tag i { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #e9eee9; color: #58744e; font-style: normal; }
@@ -490,9 +490,32 @@
     :root[data-theme="dark"] .toast-dot { background: #1c3659; color: #a9cbff; }
     :root[data-theme="dark"] .toast-message { background: var(--electric); color: #061327; }
     :root[data-theme="dark"] .overlay { background: rgba(1,5,14,.78); }
+    body { background: radial-gradient(ellipse at 50% 12%, #f8f5ee 0, #f3efe7 66%, #eee9df 100%); }
+    .ambient-jewelry { position: fixed; z-index: 0; inset: 0; width: 100%; height: 100%; opacity: .66; pointer-events: none; }
+    .promo, .nav, main, .footer { position: relative; z-index: 1; }
+    .promo { background: rgba(23,24,21,.86); }
+    .nav { background: rgba(245,242,235,.74); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+    .hero { background: transparent; }
+    .trust { background: rgba(255,254,250,.4); }
+    .social-proof { background: rgba(245,242,235,.57); }
+    .urgency { background: rgba(238,232,220,.52); }
+    .newsletter { background: rgba(234,229,218,.66); }
+    .gift { background: rgba(16,17,15,.75); }
+    .footer { background: rgba(23,24,21,.82); }
+    :root[data-theme="dark"] body { background: radial-gradient(ellipse at 50% 12%, #11264a 0, #0b1730 55%, #07111f 100%); }
+    :root[data-theme="dark"] .ambient-jewelry { opacity: .76; }
+    :root[data-theme="dark"] .promo { background: rgba(5,12,24,.83); }
+    :root[data-theme="dark"] .nav { background: rgba(11,23,48,.69); }
+    :root[data-theme="dark"] .trust { background: rgba(7,17,31,.48); }
+    :root[data-theme="dark"] .social-proof { background: rgba(11,23,48,.59); }
+    :root[data-theme="dark"] .urgency { background: rgba(16,33,62,.57); }
+    :root[data-theme="dark"] .newsletter { background: rgba(16,33,62,.67); }
+    :root[data-theme="dark"] .gift { background: rgba(5,12,24,.72); }
+    :root[data-theme="dark"] .footer { background: rgba(5,12,24,.82); }
   </style>
 </head>
 <body>
+  <canvas class="ambient-jewelry" aria-hidden="true"></canvas>
   <div class="promo">Livraison gratuite dès <b>&nbsp;499 DH&nbsp;</b> • Paiement à la livraison</div>
   <header class="nav">
     <div class="nav-inner">
@@ -676,6 +699,134 @@
   </section>
   <script>
     (() => {
+      const ambientCanvas = document.querySelector(".ambient-jewelry");
+      const ambientContext = ambientCanvas.getContext("2d");
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const ambientPointer = { x: 0, y: 0 };
+      const ambientParticles = Array.from({ length: 34 }, (_, index) => ({
+        x: ((index * 67 + 23) % 101) / 101,
+        y: ((index * 43 + 17) % 97) / 97,
+        phase: index * 1.73
+      }));
+      let ambientWidth = 0;
+      let ambientHeight = 0;
+      let ambientScale = 1;
+      let ambientFrame = 0;
+      const resizeAmbientCanvas = () => {
+        ambientWidth = window.innerWidth;
+        ambientHeight = window.innerHeight;
+        ambientScale = Math.min(window.devicePixelRatio || 1, 1.5);
+        ambientCanvas.width = Math.round(ambientWidth * ambientScale);
+        ambientCanvas.height = Math.round(ambientHeight * ambientScale);
+        ambientContext.setTransform(ambientScale, 0, 0, ambientScale, 0, 0);
+        if (reducedMotion.matches) drawAmbientJewelry(0);
+      };
+      const drawAmbientJewelry = (time) => {
+        if (!ambientWidth || !ambientHeight) return;
+        ambientContext.clearRect(0, 0, ambientWidth, ambientHeight);
+        const dark = document.documentElement.dataset.theme === "dark";
+        const scroll = reducedMotion.matches ? 0 : window.scrollY || 0;
+        const radius = Math.min(ambientWidth * (ambientWidth < 700 ? 0.83 : 0.52), ambientHeight * (ambientWidth < 700 ? 0.52 : 0.6));
+        const centerX = ambientWidth * (ambientWidth < 700 ? 0.53 : 0.72) + ambientPointer.x * 17;
+        const centerY = ambientHeight * ((ambientWidth < 700 ? 0.59 : 0.51) + Math.sin(scroll * 0.0007) * 0.045) + ambientPointer.y * 13;
+        const spin = (reducedMotion.matches ? 0 : time * 0.000045) + scroll * 0.00014;
+        const rings = [
+          { size: 1, tilt: 1.1, angle: -0.22, offsetX: 0, offsetY: 0, width: 1.55, colors: dark ? ["rgba(241,213,142,.82)", "rgba(255,244,208,.76)", "rgba(67,143,255,.44)", "rgba(181,199,230,.63)", "rgba(255,235,180,.75)"] : ["rgba(142,104,44,.7)", "rgba(255,243,210,.85)", "rgba(98,126,165,.4)", "rgba(255,254,250,.9)", "rgba(239,210,151,.8)"], bead: dark ? "#f1d58e" : "#c39a55" },
+          { size: 0.79, tilt: 0.87, angle: 0.46, offsetX: -0.065, offsetY: -0.035, width: 1.2, colors: dark ? ["rgba(117,169,255,.7)", "rgba(194,216,255,.8)", "rgba(86,125,190,.55)", "rgba(204,226,255,.72)", "rgba(82,137,231,.55)"] : ["rgba(62,94,140,.6)", "rgba(255,254,250,.86)", "rgba(139,160,193,.56)", "rgba(249,249,245,.82)", "rgba(97,130,176,.52)"], bead: dark ? "#78adff" : "#7e9bc3" },
+          { size: 0.57, tilt: 1.28, angle: 0.08, offsetX: 0.055, offsetY: 0.07, width: 1.05, colors: dark ? ["rgba(232,239,250,.72)", "rgba(255,255,255,.82)", "rgba(154,182,224,.64)", "rgba(204,219,241,.72)", "rgba(246,249,255,.74)"] : ["rgba(106,113,122,.55)", "rgba(255,255,255,.96)", "rgba(144,153,163,.58)", "rgba(245,245,239,.9)", "rgba(255,255,255,.93)"], bead: dark ? "#dce9ff" : "#d6cbb3" }
+        ];
+        const project = (x, y, z, depth) => {
+          const perspective = depth / (depth - z);
+          return {
+            x: centerX + x * perspective,
+            y: centerY + y * perspective,
+            depth: perspective
+          };
+        };
+        rings.forEach((ring, ringIndex) => {
+          const major = radius * 0.91 * ring.size;
+          const tube = radius * 0.035 * ring.size;
+          const phase = spin * (ringIndex % 2 ? -0.76 : 1) + ring.angle + ringIndex * 0.72;
+          const tilt = ring.tilt + Math.sin(spin * 0.7 + ringIndex) * 0.075;
+          const rotate = (u, v) => {
+            const localRadius = major + tube * Math.cos(v);
+            const localX = localRadius * Math.cos(u);
+            const localY = localRadius * Math.sin(u);
+            const localZ = tube * Math.sin(v);
+            const tiltedY = localY * Math.cos(tilt) - localZ * Math.sin(tilt);
+            const tiltedZ = localY * Math.sin(tilt) + localZ * Math.cos(tilt);
+            const spunX = localX * Math.cos(phase) + tiltedZ * Math.sin(phase);
+            const spunZ = -localX * Math.sin(phase) + tiltedZ * Math.cos(phase);
+            const rotatedX = spunX * Math.cos(ring.angle) - tiltedY * Math.sin(ring.angle);
+            const rotatedY = spunX * Math.sin(ring.angle) + tiltedY * Math.cos(ring.angle);
+            return project(rotatedX + radius * ring.offsetX, rotatedY + radius * ring.offsetY, spunZ, radius * 3.2);
+          };
+          for (let strand = 0; strand < ring.colors.length; strand += 1) {
+            const path = new Path2D();
+            const across = (strand / ring.colors.length) * Math.PI * 2;
+            for (let step = 0; step <= 144; step += 1) {
+              const point = rotate((step / 144) * Math.PI * 2, across);
+              if (step === 0) path.moveTo(point.x, point.y);
+              else path.lineTo(point.x, point.y);
+            }
+            ambientContext.beginPath();
+            ambientContext.strokeStyle = ring.colors[strand];
+            ambientContext.lineWidth = ring.width + (strand === 2 ? 0.75 : 0);
+            ambientContext.lineCap = "round";
+            ambientContext.stroke(path);
+          }
+          for (let bead = 0; bead < 11; bead += 1) {
+            const point = rotate((bead / 11) * Math.PI * 2 + phase * 0.22, 0.15);
+            const beadRadius = Math.max(1.7, radius * ring.size * 0.008 * point.depth);
+            const shine = ambientContext.createRadialGradient(
+              point.x - beadRadius * 0.35,
+              point.y - beadRadius * 0.42,
+              beadRadius * 0.08,
+              point.x,
+              point.y,
+              beadRadius
+            );
+            shine.addColorStop(0, "#fffef3");
+            shine.addColorStop(0.35, ring.bead);
+            shine.addColorStop(1, dark ? "rgba(13,28,54,.88)" : "rgba(60,53,44,.75)");
+            ambientContext.beginPath();
+            ambientContext.fillStyle = shine;
+            ambientContext.arc(point.x, point.y, beadRadius, 0, Math.PI * 2);
+            ambientContext.fill();
+          }
+        });
+        ambientParticles.forEach((particle) => {
+          const twinkle = 0.26 + (Math.sin(time * 0.0012 + particle.phase) + 1) * 0.18;
+          const x = particle.x * ambientWidth + ambientPointer.x * 8;
+          const y = ((particle.y * ambientHeight - scroll * 0.025) % ambientHeight + ambientHeight) % ambientHeight;
+          ambientContext.beginPath();
+          ambientContext.fillStyle = dark ? `rgba(147,189,255,${twinkle})` : `rgba(174,132,61,${twinkle * 0.68})`;
+          ambientContext.arc(x, y, particle.phase % 5 === 0 ? 1.8 : 1.1, 0, Math.PI * 2);
+          ambientContext.fill();
+        });
+        if (!reducedMotion.matches && document.visibilityState === "visible") ambientFrame = window.requestAnimationFrame(drawAmbientJewelry);
+      };
+      window.addEventListener("resize", resizeAmbientCanvas, { passive: true });
+      window.addEventListener("scroll", () => {
+        if (reducedMotion.matches) drawAmbientJewelry(0);
+      }, { passive: true });
+      window.addEventListener("pointermove", (event) => {
+        ambientPointer.x = event.clientX / Math.max(ambientWidth, 1) - 0.5;
+        ambientPointer.y = event.clientY / Math.max(ambientHeight, 1) - 0.5;
+      }, { passive: true });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && !reducedMotion.matches) {
+          window.cancelAnimationFrame(ambientFrame);
+          ambientFrame = window.requestAnimationFrame(drawAmbientJewelry);
+        }
+      });
+      reducedMotion.addEventListener("change", () => {
+        window.cancelAnimationFrame(ambientFrame);
+        resizeAmbientCanvas();
+        if (!reducedMotion.matches) ambientFrame = window.requestAnimationFrame(drawAmbientJewelry);
+      });
+      resizeAmbientCanvas();
+      if (!reducedMotion.matches) ambientFrame = window.requestAnimationFrame(drawAmbientJewelry);
       const drawer = document.querySelector(".cart-drawer");
       const overlay = document.querySelector(".overlay");
       const exitModal = document.querySelector(".exit-modal");
